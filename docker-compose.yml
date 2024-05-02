@@ -1,0 +1,81 @@
+version: "3.9"
+# docker-compose up  -d --build
+# docker-compose up  -d --build --scale app-angular=4
+# docker-compose up  -d --build --scale apI-node=10
+services:
+  api-gateway:
+    image: nginxproxy/nginx-proxy:alpine
+    container_name: QA-API-Gateway
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - VIRTUAL_HOST=carrito.edu.mx
+      - VIRTUAL_PATH=/.well-known
+    volumes:
+      - nginx-certs:/etc/nginx/certs:ro
+      - nginx-vhostd:/etc/nginx/vhost.d
+      - nginx-html:/usr/share/nginx/html:rw
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - net-qa
+
+  app-angular:
+    build:
+      context: ../app-cart
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - VIRTUAL_HOST=carrito.edu.mx
+      - VIRTUAL_PATH=/
+    networks:
+      - net-qa
+
+  api-node:
+    build:
+      context: ../api-cart
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - VIRTUAL_HOST=carrito.edu.mx
+      - VIRTUAL_PATH=/api
+      - VIRTUAL_PORT=3000
+      - API_NAME='API REST'
+      - API_PORT=3000
+      - API_HOST=localhost
+      - FRONT_END_DOMAIN_URL=http://carrito.edu.mx
+      - API_DOMAIN_URL=http://carrito.edu.mx
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - MONGO_USER=dba-root
+      - MONGO_PASS=mongoadminsecret
+      - MONGO_DATABASE=dbcart
+    networks:
+      - net-qa  
+
+  mongodb:
+    image: mongo:6.0.6
+    command: mongod --auth
+    container_name: QA-MongoDB
+    restart: always
+    ports:
+      - 27018:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=dba-root
+      - MONGO_INITDB_ROOT_PASSWORD=mongoadminsecret
+    volumes:
+      - mongodb-storage-qa:/data/db
+    networks:
+      - net-qa
+
+volumes:
+  nginx-certs:
+  nginx-vhostd:
+  nginx-html:
+  mongodb-storage-qa:
+
+networks:
+  net-qa:
+  
+  
